@@ -1,4 +1,4 @@
-# Smooth-Mouse 1.0.1
+# Smooth-Mouse 1.0.2
 # A utility to help with cursor movement between multiple monitors
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -9,6 +9,8 @@ $script:previousPosition = $null
 $script:isOnPrimaryMonitor = $true
 $script:primary = [System.Windows.Forms.Screen]::PrimaryScreen
 $script:isEnabled = $true  # Flag to enable/disable the script functionality
+$script:targetPosition = $null  # Target position we're trying to achieve
+$script:retryCount = 0  # Number of retries attempted for current transition
 
 # Function to get current mouse position
 function Get-MousePosition {
@@ -20,6 +22,39 @@ function Set-MousePosition([System.Drawing.Point]$point) {
     [System.Windows.Forms.Cursor]::Position = $point
     # Return nothing to suppress output
     return
+}
+
+# Function to check if cursor is at expected position (within tolerance)
+function Test-PositionMatch([System.Drawing.Point]$actual, [System.Drawing.Point]$expected, [int]$tolerance = 100) {
+    if ($null -eq $actual -or $null -eq $expected) { return $false }
+    $deltaX = [Math]::Abs($actual.X - $expected.X)
+    $deltaY = [Math]::Abs($actual.Y - $expected.Y)
+    return ($deltaX -le $tolerance) -and ($deltaY -le $tolerance)
+}
+
+# Function to robustly set mouse position with verification and retries
+function Set-MousePositionRobust([System.Drawing.Point]$targetPoint, [int]$maxAttempts = 2) {
+    for ($i = 0; $i -lt $maxAttempts; $i++) {
+        # Set the position
+        [void](Set-MousePosition $targetPoint)
+
+        # Small delay to let Windows process the position change
+        Start-Sleep -Milliseconds 5
+
+        # Verify the position
+        $actualPosition = Get-MousePosition
+        if (Test-PositionMatch $actualPosition $targetPoint) {
+            # Success! Clear the target position tracker
+            $script:targetPosition = $null
+            $script:retryCount = 0
+            return $true
+        }
+    }
+
+    # Failed after all attempts - store target for next timer tick
+    $script:targetPosition = $targetPoint
+    $script:retryCount++
+    return $false
 }
 
 # Function to check if point is on primary monitor
@@ -197,6 +232,23 @@ $timer.Add_Tick({
     }
 
     $currentPosition = Get-MousePosition
+
+    # First priority: Check if we have a pending target position from a previous failed attempt
+    if ($null -ne $script:targetPosition -and $script:retryCount -lt 5) {
+        # Try to correct the position again
+        $success = Set-MousePositionRobust $script:targetPosition 3
+        if ($success) {
+            # Update current position after successful correction
+            $currentPosition = Get-MousePosition
+        } else {
+            # Still failing - give up after 20 total retry cycles
+            if ($script:retryCount -ge 5) {
+                $script:targetPosition = $null
+                $script:retryCount = 0
+            }
+        }
+    }
+
     $onPrimary = Test-PointOnPrimaryMonitor $currentPosition
 
     # Check for abrupt position change while leaving primary
@@ -205,7 +257,7 @@ $timer.Add_Tick({
             $script:isOnPrimaryMonitor = $false
             # Set percentage-based position on secondary monitor
             $relativePos = Get-PercentageBasedPosition $script:previousPosition $true
-            [void](Set-MousePosition $relativePos)
+            [void](Set-MousePositionRobust $relativePos 2)
         }
     }
     # Mouse returning to primary monitor
@@ -213,7 +265,7 @@ $timer.Add_Tick({
         if (Test-AbruptChange $currentPosition $script:previousPosition) {
             # Set percentage-based position on primary monitor
             $relativePos = Get-PercentageBasedPosition $script:previousPosition $false
-            [void](Set-MousePosition $relativePos)
+            [void](Set-MousePositionRobust $relativePos 2)
         }
         $script:isOnPrimaryMonitor = $true
     }

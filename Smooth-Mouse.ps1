@@ -1,4 +1,4 @@
-# Easy-mouse-transition 1.0.1
+# Smooth-Mouse 1.0.1
 # A utility to help with cursor movement between multiple monitors
 
 Add-Type -AssemblyName System.Windows.Forms
@@ -122,7 +122,7 @@ function Initialize-TrayIcon {
     # Try to find and load the icon file
     $iconFound = $false
     foreach ($location in $possibleLocations) {
-        $iconFile = Join-Path -Path $location -ChildPath "Easy-mouse.ico"
+        $iconFile = Join-Path -Path $location -ChildPath "Smooth-mouse.ico"
         if (Test-Path -Path $iconFile) {
             try {
                 $script:notifyIcon.Icon = New-Object System.Drawing.Icon($iconFile)

@@ -73,7 +73,7 @@ $threshold = 100  # Pixels - increase for less sensitive detection
 
 Adjust position matching tolerance in `Test-PositionMatch`:
 ```powershell
-[int]$tolerance = 10  # Pixels - cursor must be within this distance to target
+[int]$tolerance = 100  # Pixels - cursor must be within this distance to target
 ```
 
 ### Retry Parameters
@@ -81,9 +81,9 @@ Adjust position matching tolerance in `Test-PositionMatch`:
 Adjust retry behavior in the timer logic and `Set-MousePositionRobust`:
 ```powershell
 # In timer Add_Tick:
-$script:retryCount -lt 20  # Maximum timer cycles for retries
+$script:retryCount -lt 2  # Maximum timer cycles for retries
 
 # In Set-MousePositionRobust:
-[int]$maxAttempts = 5  # Immediate retry attempts per positioning operation
+[int]$maxAttempts = 2  # Immediate retry attempts per positioning operation
 Start-Sleep -Milliseconds 5  # Delay between retry attempts
 ```

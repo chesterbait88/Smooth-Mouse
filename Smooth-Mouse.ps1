@@ -33,7 +33,7 @@ function Test-PositionMatch([System.Drawing.Point]$actual, [System.Drawing.Point
 }
 
 # Function to robustly set mouse position with verification and retries
-function Set-MousePositionRobust([System.Drawing.Point]$targetPoint, [int]$maxAttempts = 2) {
+function Set-MousePositionRobust([System.Drawing.Point]$targetPoint, [int]$maxAttempts = 2) { #lowered to streamline mouse movement
     for ($i = 0; $i -lt $maxAttempts; $i++) {
         # Set the position
         [void](Set-MousePosition $targetPoint)
